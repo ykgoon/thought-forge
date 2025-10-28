@@ -1,43 +1,68 @@
-# Research: Org-Mode Text Processing for Blog Creation
+# Research Document: Org-Mode Text Processing for Blog Creation
 
-## Decision: Package Structure
-**Rationale**: Using the skeletor Emacs package to create a MELPA-compliant package structure ensures proper packaging standards and distribution. This follows Emacs packaging best practices and makes the package available to the broader Emacs community.
+## Overview
+This research document addresses the technical requirements for implementing an Emacs package that extracts org-mode texts by date, scores them for novelty using LLM, and generates blog content in markdown format.
 
-**Alternatives considered**: 
-- Manual package structure creation (more error-prone and non-standard)
-- Using other scaffolding tools (skeletor is specifically designed for Emacs packages)
+## Key Components
 
-## Decision: Org-mode Date Range Functionality
-**Rationale**: Emacs org-mode has built-in functionality for parsing and working with timestamps via `org-time-stamp` format. We'll use the existing functions like `org-timestamp-to-time` to convert org-mode timestamps to Emacs time values for comparison with the user-specified date range.
+### 1. Org-Mode Entry Collection
+- **Decision**: Use `org-element-parse-buffer` and related org-mode API functions to parse and extract entries with timestamps
+- **Rationale**: These are standard, well-documented functions that properly handle org-mode syntax and timestamps
+- **Alternatives considered**: 
+  - Regular expressions to extract entries (less reliable)
+  - External parsers (not needed since org-mode has built-in parsing)
 
-**Alternatives considered**:
-- Writing custom date parsing (reinventing the wheel when org-mode already has robust functionality)
-- Using external date libraries (unnecessary dependency when org-mode handles this well)
+### 2. Date Range Handling
+- **Decision**: Leverage org-mode's built-in date parsing functions like `org-time-stamp-to-time` to handle date ranges
+- **Rationale**: These functions already understand org-mode's timestamp format and handle edge cases
+- **Alternatives considered**:
+  - Custom date parsing (reinventing existing functionality)
 
-## Decision: Interactive Buffer for Text Selection
-**Rationale**: Using a specialized Emacs mode for the selection buffer will provide the partly read-only behavior requested. `special-mode` or a derived mode like `view-mode` is appropriate for this read-only buffer where users can navigate and select text without editing. This mode allows for custom keybindings to make selections and proceed to the next step.
+### 3. LLM Integration
+- **Decision**: Use the `gptel` package for LLM integration as specified in the requirements
+- **Rationale**: The requirements specifically mandate the use of gptel for making LLM calls
+- **Alternatives considered**: 
+  - Direct API calls (more complex to maintain)
+  - Other Emacs LLM packages (requirements specify gptel)
 
-**Alternatives considered**:
-- Using a simple `fundamental-mode` with manual read-only implementation (less ergonomic)
-- Using `text-mode` with read-only (not specifically designed for this use case)
+### 4. Novelty Scoring Methodology
+- **Decision**: Implement the 4-step LLM analysis process as detailed in the specification
+- **Rationale**: This methodology is specifically required by the functional requirements
+- **Steps**:
+  - Multi-dimensional analysis (5 dimensions)
+  - Comparative analysis against example levels
+  - Meta-evaluation
+  - Consistency check
 
-## Decision: LLM Integration via gptel
-**Rationale**: The user specifically requested using the `gptel` package for LLM integration. Gptel provides a clean interface to interact with various LLM providers directly from Emacs, making it an ideal choice for the intelligent processing required in the specification.
+### 5. Interactive Selection Interface
+- **Decision**: Use Emacs' built-in `completing-read` or custom buffer-based interface for user selection
+- **Rationale**: These are standard Emacs UI patterns that users expect
+- **Alternatives considered**:
+  - External UI tools (not appropriate for Emacs package)
 
-**Alternatives considered**:
-- Custom HTTP API calls to LLM providers (unnecessary complexity when gptel exists)
-- Using other Emacs LLM packages (user specifically requested gptel)
+### 6. Markdown Generation
+- **Decision**: Generate markdown content directly using Emacs string manipulation functions
+- **Rationale**: Simple and direct approach that doesn't require external dependencies
+- **Alternatives considered**:
+  - Converting from org-mode to markdown (unnecessary complexity)
 
-## Decision: Novelty Scoring Approach
-**Rationale**: For the novelty scoring, we'll implement a basic algorithm that can evaluate uniqueness of content based on comparison with other entries in the dataset and potentially against cached content. The scoring doesn't need to be complex AI - simple heuristics comparing content uniqueness can work well for this use case.
+## Implementation Approach
 
-**Alternatives considered**:
-- Complex machine learning models for novelty detection (overkill for this use case)
-- External API calls for novelty scoring (would add dependencies and potential rate limits)
+### Technical Architecture
+The solution will be implemented as a single Emacs Lisp package with multiple functional components:
 
-## Decision: Buffer Management Strategy
-**Rationale**: Emacs buffer management functions like `generate-new-buffer` will be used to create the intermediate and output buffers. This follows Emacs conventions and ensures proper integration with the Emacs editing environment.
+1. **Date Collection Module**: Handles parsing date ranges and finding relevant org-mode entries
+2. **LLM Processing Module**: Manages communication with LLM via gptel for scoring and enhancement
+3. **User Interaction Module**: Provides the interactive interface for selection
+4. **Output Module**: Formats and presents results in markdown buffers
 
-**Alternatives considered**:
-- String manipulation without buffers (doesn't follow Emacs conventions)
-- Custom window management (unnecessary complexity)
+### Performance Considerations
+- Async processing should be considered for LLM calls to avoid blocking the editor
+- Caching may be implemented for repeated requests
+- Memory usage should be monitored when processing large numbers of entries
+
+## Dependencies
+- `org-mode`: Core functionality for parsing org files
+- `gptel`: Interface for LLM communication
+- `dash.el` (likely): For functional programming utilities
+- `s.el` (likely): For string manipulation utilities

@@ -3,6 +3,8 @@
 Auto-generated from all feature plans. Last updated: 2025-10-28
 
 ## Active Technologies
+- Emacs Lisp (Elisp) - compatible with Emacs v30 as per constitution + org-mode, gptel (for LLM integration), skeletor (for MELPA compliance) (001-org-mode-texts)
+- File-based (org-mode files), temporary buffers for processing (001-org-mode-texts)
 
 - Emacs Lisp (Elisp) - compatible with Emacs v30 as per constitution + org-mode, gptel (as specified by user input), skeletor (for MELPA compliance) (001-org-mode-texts)
 
@@ -22,6 +24,7 @@ tests/
 Emacs Lisp (Elisp) - compatible with Emacs v30 as per constitution: Follow standard conventions
 
 ## Recent Changes
+- 001-org-mode-texts: Added Emacs Lisp (Elisp) - compatible with Emacs v30 as per constitution + org-mode, gptel (for LLM integration), skeletor (for MELPA compliance)
 
 - 001-org-mode-texts: Added Emacs Lisp (Elisp) - compatible with Emacs v30 as per constitution + org-mode, gptel (as specified by user input), skeletor (for MELPA compliance)
 
