@@ -1,50 +1,46 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+<!-- 
+SYNC IMPACT REPORT
+Version change: 1.0.0 → 0.1.0
+Modified principles: Downgraded version for pre-release status
+Added sections: None
+Removed sections: None
+Templates requiring updates: 
+  - ✅ plan-template.md: Constitution Check section still aligns with principles
+  - ✅ spec-template.md: Requirements section still compatible with principles
+  - ✅ tasks-template.md: Task structure still supports test-first development
+  - ✅ command files: No outdated references requiring updates
+Follow-up TODOs: 
+  - ⚠ RATIFICATION_DATE: Original adoption date unknown, marked as TODO
+-->
+# thought-forge Constitution
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### I. Test-First Development (NON-NEGOTIABLE)
+Automated tests must be created before implementation. This ensures code quality, reduces bugs, and provides confidence during refactoring. No feature or bug fix should be implemented without corresponding tests being written first.
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+### II. Emacs Compatibility
+Project must run successfully on emacs v30. All tools, scripts, and development workflows must be compatible with emacs v30 to ensure consistent development environments across the team.
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+### III. Code Review Process
+All code changes must undergo peer review before being merged. At least one team member must approve each pull request. Critical changes require approval from multiple team members.
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+### IV. Documentation Standards
+All public APIs, complex algorithms, and architectural decisions must be documented. Documentation should be updated whenever code changes affect public interfaces or documented behavior.
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+### V. Performance Standards
+Performance requirements must be met before release. All performance benchmarks must pass without degradation. Significant performance improvements or fixes should be documented in release notes.
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+## Development Workflow
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
+All development follows GitFlow methodology with feature branches, pull requests, and release tags. Major changes require design documents approved by the technical lead before implementation begins.
 
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
+## Quality Assurance
 
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+Automated testing includes unit tests, integration tests, and end-to-end tests. All tests must pass before merging. Code coverage targets are maintained at 80% minimum for new code.
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
+This constitution governs all development practices for the thought-forge project. All team members are expected to adhere to these principles. Changes to this constitution must be approved by a majority of the senior development team.
 
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+**Version**: 0.1.0 | **Ratified**: TODO(RATIFICATION_DATE): Original adoption date unknown | **Last Amended**: 2025-10-28
