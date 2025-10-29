@@ -1,0 +1,41 @@
+# Emacs specific files
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+auto-save-list
+tramp
+.\#*
+
+# Org mode
+*.org~
+*#Results:
+
+# Elisp compilation
+*.elc
+*.eln
+*.eln.str
+eln-cache/
+
+# Backup and autosave files
+*#
+.\#*
+\#*#
+
+# Temporary files
+/tmp/
+/temps/
+*.tmp
+*.bak
+
+# Environment variables
+.env*
+!/.env.example
+
+# Logs
+*.log
+log/
+
+# Package management
+/elpa/
+*.tar

@@ -1,4 +1,4 @@
-# thought-forge Development Guidelines
+# Thought Forge Development Guidelines
 
 Auto-generated from all feature plans. Last updated: 2025-10-28
 
@@ -19,9 +19,31 @@ tests/
 
 # Add commands for Emacs Lisp (Elisp) - compatible with Emacs v30 as per constitution
 
+### Running Tests
+
+To run the unit tests in batch mode:
+
+```bash
+emacs -batch -l ert -l test-init.el
+```
+
+For more detailed output:
+
+```bash
+emacs -batch -l ert -l test-init.el -f ert-run-tests-batch-and-exit
+```
+
 ## Code Style
 
 Emacs Lisp (Elisp) - compatible with Emacs v30 as per constitution: Follow standard conventions
+
+When creating new .el files, include the following header information:
+```
+;; Copyright (C) 2025  Y.K. Goon
+
+;; Author: Y.K. Goon <ykgoon@gmail.com>
+;; Maintainer: Y.K. Goon <ykgoon@gmail.com>
+```
 
 ## Recent Changes
 - 001-org-mode-texts: Added Emacs Lisp (Elisp) - compatible with Emacs v30 as per constitution + org-mode, gptel (for LLM integration), skeletor (for MELPA compliance)
