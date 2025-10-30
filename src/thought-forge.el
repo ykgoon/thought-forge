@@ -31,54 +31,54 @@
 (defstruct (thought-forge-org-entry
             (:constructor thought-forge-make-org-entry)
             (:copier thought-forge-copy-org-entry))
-  "Structure representing an org-mode entry."
-  id
-  content
-  timestamp
-  start-date
-  end-date
-  file
-  position
-  novelty-score
-  confidence-level
-  is-selected)
+           "Structure representing an org-mode entry."
+           id
+           content
+           timestamp
+           start-date
+           end-date
+           file
+           position
+           novelty-score
+           confidence-level
+           is-selected)
 
 (defstruct (thought-forge-date-range
             (:constructor thought-forge-make-date-range)
             (:copier thought-forge-copy-date-range))
-  "Structure representing a date range."
-  start-date
-  end-date
-  default-end-equals-start)
+           "Structure representing a date range."
+           start-date
+           end-date
+           default-end-equals-start)
 
 (defstruct (thought-forge-novelty-score
             (:constructor thought-forge-make-novelty-score)
             (:copier thought-forge-copy-novelty-score))
-  "Structure representing a novelty score."
-  entry-id
-  multi-dimensional-score
-  cliche-score
-  conceptual-score
-  structural-score
-  historical-score
-  synthesis-score
-  comparative-score
-  meta-evaluation-score
-  consistency-check-score
-  final-score
-  confidence-level
-  justification)
+           "Structure representing a novelty score."
+           entry-id
+           multi-dimensional-score
+           cliche-score
+           conceptual-score
+           structural-score
+           historical-score
+           synthesis-score
+           comparative-score
+           meta-evaluation-score
+           consistency-check-score
+           final-score
+           confidence-level
+           justification)
 
 (defstruct (thought-forge-processing-result
             (:constructor thought-forge-make-processing-result)
             (:copier thought-forge-copy-processing-result))
-  "Structure representing a processing result."
-  entry-id
-  original-content
-  enhanced-content
-  processing-time
-  llm-model-used
-  processing-status)
+           "Structure representing a processing result."
+           entry-id
+           original-content
+           enhanced-content
+           processing-time
+           llm-model-used
+           processing-status)
 
 
 ;; Error handling
@@ -96,9 +96,9 @@
         (let ((date-string (or (match-string 1 timestamp-string)
                                (match-string 2 timestamp-string))))
           (condition-case nil
-              (date-to-time (format-time-string "%Y-%m-%d %H:%M" 
-                                               (apply 'encode-time 
-                                                      (org-parse-time-string date-string))))
+              (date-to-time (format-time-string "%Y-%m-%d %H:%M"
+                                                (apply 'encode-time
+                                                       (org-parse-time-string date-string))))
             (error (user-error "Invalid date format: %s" timestamp-string)))
           )
       (date-to-time timestamp-string))))
@@ -125,47 +125,47 @@
          (org-files (thought-forge-get-org-files))
          (entries '())
          (entry-counter 0))
-    
+
     ;; If no org files found in standard locations, try current directory and its subdirectories
     (unless org-files
       (setq org-files (directory-files-recursively default-directory "\\.org$")))
-    
+
     (dolist (file org-files)
       (with-temp-buffer
         (insert-file-contents file)
         (goto-char (point-min))
-        
+
         ;; Look for org entries with timestamps
         (while (re-search-forward org-ts-regexp-both nil t)
-          (let* ((timestamp (thought-forge-parse-org-timestamp 
-                            (match-string-no-properties 0)))
-                 (entry-start (save-excursion 
-                               (goto-char (match-beginning 0))
-                               (line-beginning-position)))
-                 (entry-end (save-excursion 
-                             (goto-char (match-end 0))
-                             (line-end-position)))
-                 (entry-content (buffer-substring-no-properties 
-                                (max (point-min) (- entry-start 100)) 
-                                (min (point-max) (+ entry-end 100)))))
-            
+          (let* ((timestamp (thought-forge-parse-org-timestamp
+                             (match-string-no-properties 0)))
+                 (entry-start (save-excursion
+                                (goto-char (match-beginning 0))
+                                (line-beginning-position)))
+                 (entry-end (save-excursion
+                              (goto-char (match-end 0))
+                              (line-end-position)))
+                 (entry-content (buffer-substring-no-properties
+                                 (max (point-min) (- entry-start 100))
+                                 (min (point-max) (+ entry-end 100)))))
+
             ;; Check if timestamp is within our date range
             (when (and (time-less-p start-date timestamp)
                        (time-less-p timestamp (time-add end-date 86400))) ; Add one day to include end date
               (let ((entry (thought-forge-make-org-entry
-                           :id (format "entry-%d" entry-counter)
-                           :content entry-content
-                           :timestamp timestamp
-                           :start-date start-date
-                           :end-date end-date
-                           :file file
-                           :position entry-start
-                           :novelty-score 0
-                           :confidence-level "low"
-                           :is-selected nil)))
+                            :id (format "entry-%d" entry-counter)
+                            :content entry-content
+                            :timestamp timestamp
+                            :start-date start-date
+                            :end-date end-date
+                            :file file
+                            :position entry-start
+                            :novelty-score 0
+                            :confidence-level "low"
+                            :is-selected nil)))
                 (push entry entries)
                 (setq entry-counter (1+ entry-counter))))))))
-    
+
     (nreverse entries)))
 
 
@@ -176,14 +176,14 @@
          (comparative (thought-forge-comparative-analysis content))
          (meta-eval (thought-forge-meta-evaluation content scores comparative))
          (critic-eval (thought-forge-consistency-check content (plist-get meta-eval :score)))
-         
+
          ;; Calculate weighted final score
          (multi-dimensional-avg (thought-forge-average-scores scores))
          (final-score (+ (* multi-dimensional-avg 0.35)
-                        (* (plist-get comparative :score) 0.25)
-                        (* (plist-get meta-eval :score) 0.30)
-                        (* (plist-get critic-eval :score) 0.10))))
-    
+                         (* (plist-get comparative :score) 0.25)
+                         (* (plist-get meta-eval :score) 0.30)
+                         (* (plist-get critic-eval :score) 0.10))))
+
     (thought-forge-make-novelty-score
      :entry-id (thought-forge-org-entry-id entry)
      :multi-dimensional-score multi-dimensional-avg
@@ -205,9 +205,9 @@
   "Perform multi-dimensional novelty analysis on PASSAGE using gptel."
   ;; In a real implementation, this would make an LLM call via gptel
   ;; For now, we'll return placeholder values with a more realistic structure
-  
+
   ;; Prepare the prompt for the LLM
-  (let* ((prompt 
+  (let* ((prompt
           (format "Analyze this passage for novelty across multiple dimensions:
 
 Passage: %s
@@ -236,13 +236,13 @@ Format your response as:
 - Historical Score: [number]
 - Synthesis Score: [number]
 - Brief justification for each score" passage)))
-    
+
     ;; In a real implementation, we would call:
-    ;; (let ((response (gptel-run "Multidimensional Analysis" 
-    ;;                           :stream nil 
+    ;; (let ((response (gptel-run "Multidimensional Analysis"
+    ;;                           :stream nil
     ;;                           :system prompt)))
     ;;   (parse-multidimensional-response response))
-    
+
     ;; For now, return sample data that would come from such a call
     (list :cliche 70
           :conceptual 65
@@ -265,13 +265,13 @@ Compare it to these examples of different novelty levels:
 - Novelty 90+: [Would be a genuinely groundbreaking scientific or philosophical insight]
 
 Where does the given passage fall on this scale? Provide a score 0-100." passage)))
-    
+
     ;; In a real implementation, we would call gptel:
-    ;; (let ((response (gptel-run "Comparative Analysis" 
-    ;;                           :stream nil 
+    ;; (let ((response (gptel-run "Comparative Analysis"
+    ;;                           :stream nil
     ;;                           :system prompt)))
     ;;   (parse-comparative-response response))
-    
+
     ;; For now, return sample data
     (list :score 68)))
 
@@ -305,18 +305,18 @@ Consider:
 Provide:
 - Final novelty score (0-100)
 - Confidence level (low/medium/high)
-- One-line justification" 
+- One-line justification"
                   passage cliche conceptual structural historical synthesis comparative-score)))
-    
+
     ;; In a real implementation, we would call gptel:
-    ;; (let ((response (gptel-run "Meta-Evaluation" 
-    ;;                           :stream nil 
+    ;; (let ((response (gptel-run "Meta-Evaluation"
+    ;;                           :stream nil
     ;;                           :system prompt)))
     ;;   (parse-meta-eval-response response))
-    
+
     ;; For now, return sample data
-    (list :score 72 
-          :confidence "medium" 
+    (list :score 72
+          :confidence "medium"
           :justification "Overall solid originality with mixed assessment scores")))
 
 (defun thought-forge-consistency-check (passage score)
@@ -333,15 +333,15 @@ Try to:
 2. Identify which parts are truly original vs derivative
 3. Suggest a more realistic score if you think %d is too high
 
-If you cannot find good precedents, confirm the score is appropriate." 
+If you cannot find good precedents, confirm the score is appropriate."
                   passage score score)))
-    
+
     ;; In a real implementation, we would call gptel:
-    ;; (let ((response (gptel-run "Consistency Check" 
-    ;;                           :stream nil 
+    ;; (let ((response (gptel-run "Consistency Check"
+    ;;                           :stream nil
     ;;                           :system prompt)))
     ;;   (parse-consistency-response response))
-    
+
     ;; For now, return sample data
     (list :score 70)))
 
@@ -362,20 +362,20 @@ If you cannot find good precedents, confirm the score is appropriate."
   (condition-case err
       (let ((start-date-str (read-string "Enter start date (org-timestamp format): "))
             (end-date-str (read-string "Enter end date (defaults to start date if empty): ")))
-        
+
         ;; Parse dates
         (let* ((start-date (if (string-empty-p start-date-str)
-                              (user-error "Start date is required")
-                            (thought-forge-parse-org-timestamp start-date-str)))
+                               (user-error "Start date is required")
+                             (thought-forge-parse-org-timestamp start-date-str)))
                (end-date (if (string-empty-p end-date-str)
-                            start-date
-                          (thought-forge-parse-org-timestamp end-date-str))))
-          
+                             start-date
+                           (thought-forge-parse-org-timestamp end-date-str))))
+
           ;; Validate date range
-          (unless (or (time-less-p start-date end-date) 
+          (unless (or (time-less-p start-date end-date)
                       (time-equal-p start-date end-date))
             (user-error "End date must be same or after start date"))
-          
+
           ;; Collect entries
           (let ((entries (thought-forge-collect-entries start-date end-date)))
             (if (null entries)
@@ -384,15 +384,15 @@ If you cannot find good precedents, confirm the score is appropriate."
                 ;; Score entries
                 (dolist (entry entries)
                   (let ((score (thought-forge-score-entry entry)))
-                    (setf (thought-forge-org-entry-novelty-score entry) 
+                    (setf (thought-forge-org-entry-novelty-score entry)
                           (thought-forge-novelty-score-final-score score))))
-                
+
                 ;; Create selection buffer
                 (thought-forge-create-selection-buffer entries)))))
-    (thought-forge-llm-api-error
-     (message "LLM API error occurred: %s" (error-message-string err)))
-    (error
-     (message "An error occurred: %s" (error-message-string err))))))
+        (thought-forge-llm-api-error
+         (message "LLM API error occurred: %s" (error-message-string err)))
+        (error
+         (message "An error occurred: %s" (error-message-string err))))))
 
 
 (defun thought-forge-create-selection-buffer (entries)
@@ -402,30 +402,30 @@ If you cannot find good precedents, confirm the score is appropriate."
       (erase-buffer)
       ;; Use a special mode for our selection interface
       (thought-forge-selection-mode)
-      
+
       ;; Insert entries with their scores and selection controls
       (dolist (entry entries)
         (let ((inhibit-read-only t))
           (insert (format "ID: %s\n" (thought-forge-org-entry-id entry)))
           (insert (format "Score: %.1f\n" (thought-forge-org-entry-novelty-score entry)))
           (insert (format "File: %s\n" (thought-forge-org-entry-file entry)))
-          
+
           ;; Add a button for selection
           (insert "Status: ")
           (insert-text-button "UNSELECTED"
-                             'action (lambda (button)
-                                       (thought-forge-toggle-entry-selection button))
-                             'entry entry
-                             'face '(:box (:line-width 2 :color "gray") 
-                                         :background "red" :foreground "white"))
+                              'action (lambda (button)
+                                        (thought-forge-toggle-entry-selection button))
+                              'entry entry
+                              'face '(:box (:line-width 2 :color "gray")
+                                           :background "red" :foreground "white"))
           (insert "\n")
-          
+
           (insert (format "Content: %s\n" (thought-forge-org-entry-content entry)))
           (insert "---\n")))
-      
+
       (goto-char (point-min))
       (setq buffer-read-only t))
-    
+
     (switch-to-buffer buffer)
     (message "Entries displayed. Use 'org-tf-process-selected-entries' to process selected entries.")))
 
@@ -437,14 +437,14 @@ If you cannot find good precedents, confirm the score is appropriate."
         (progn
           (button-put button 'entry-selected t)
           (setf (thought-forge-org-entry-is-selected entry) t)
-          (button-put button 'face '(:box (:line-width 2 :color "gray") 
-                                        :background "green" :foreground "white"))
+          (button-put button 'face '(:box (:line-width 2 :color "gray")
+                                          :background "green" :foreground "white"))
           (set-text-button-label button "SELECTED"))
       (progn
         (button-put button 'entry-selected nil)
         (setf (thought-forge-org-entry-is-selected entry) nil)
-        (button-put button 'face '(:box (:line-width 2 :color "gray") 
-                                      :background "red" :foreground "white"))
+        (button-put button 'face '(:box (:line-width 2 :color "gray")
+                                        :background "red" :foreground "white"))
         (set-text-button-label button "UNSELECTED")))))
 
 ;; Define a major mode for the selection buffer
@@ -474,13 +474,13 @@ If you cannot find good precedents, confirm the score is appropriate."
 %s
 
 Provide an enhanced version that is well-structured, coherent, and readable." content)))
-    
+
     ;; In a real implementation, we would call:
-    ;; (let ((response (gptel-run "Content Enhancement" 
-    ;;                           :stream nil 
+    ;; (let ((response (gptel-run "Content Enhancement"
+    ;;                           :stream nil
     ;;                           :system prompt)))
     ;;   response)
-    
+
     ;; For now, return the original content with a note that it would be enhanced
     (format "%s\n\n[Enhanced by LLM - in actual implementation]" content)))
 
@@ -502,12 +502,12 @@ Provide an enhanced version that is well-structured, coherent, and readable." co
   "Process SELECTED-ENTRIES through LLM enhancement."
   (let ((enhanced-entries '())
         (start-time (current-time)))
-    
+
     (dolist (entry selected-entries)
       (let* ((original-content (thought-forge-org-entry-content entry))
              (enhanced-content (thought-forge-enhance-content original-content))
              (processing-time (time-to-seconds (time-subtract (current-time) start-time))))
-        
+
         (push (thought-forge-make-processing-result
                :entry-id (thought-forge-org-entry-id entry)
                :original-content original-content
@@ -516,9 +516,9 @@ Provide an enhanced version that is well-structured, coherent, and readable." co
                :llm-model-used (or llm-backend "default")
                :processing-status "success")
               enhanced-entries)))
-    
+
     ;; Combine all enhanced content into one string for the markdown buffer
-    (let ((all-enhanced-content 
+    (let ((all-enhanced-content
            (mapconcat (lambda (result)
                         (thought-forge-processing-result-enhanced-content result))
                       enhanced-entries
@@ -533,7 +533,7 @@ Provide an enhanced version that is well-structured, coherent, and readable." co
   ;; In a real implementation, this would identify which entries are selected
   ;; For now, we'll just create sample processing results
   (message "Processing selected entries...")
-  
+
   ;; This would be more complex in practice - identifying selected entries
   ;; from the selection buffer and passing them to the processing function
   (let ((sample-entry (thought-forge-make-org-entry

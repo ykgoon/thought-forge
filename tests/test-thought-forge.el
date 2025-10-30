@@ -48,9 +48,35 @@
 
 (ert-deftest test-thought-forge-collect-entries ()
   "Test collecting entries from date range."
-  ;; This test requires setup with actual org files
-  ;; For now, we'll test with a basic call that shouldn't error
-  (should (listp (thought-forge-collect-entries (current-time) (current-time)))))
+  (let* ((start-date (date-to-time "2025-10-28"))
+         (end-date (date-to-time "2025-10-30"))
+         ;; Temporarily modify the function to look in the test directory
+         (mock-get-org-files (lambda ()
+                               (directory-files-recursively
+                                (expand-file-name "tests/org" default-directory)
+                                "\\.org$"))))
+    ;; Override the function temporarily using cl-letf
+    (cl-letf (((symbol-function 'thought-forge-get-org-files) mock-get-org-files))
+      (let ((entries (thought-forge-collect-entries start-date end-date)))
+        (should (listp entries))
+        (should (= (length entries) 3))  ; We expect exactly 3 entries
+
+        ;; Extract content from entries
+        (let* ((contents (mapcar #'thought-forge-org-entry-content entries))
+               (content-strings (mapcar (lambda (content)
+                                          (s-trim (s-collapse-whitespace content)))
+                                        contents)))
+
+          ;; Verify that all three expected content strings are present
+          (should (cl-some (lambda (content)
+                             (string-match-p "Etiam laoreet quam sed arcu." content))
+                           content-strings))
+          (should (cl-some (lambda (content)
+                             (string-match-p "suscipit ligula.  Donec posuere augue in quam." content))
+                           content-strings))
+          (should (cl-some (lambda (content)
+                             (string-match-p "dignissim in, mollis nec, sagittis eu, wisi." content))
+                           content-strings)))))))
 
 (ert-deftest test-thought-forge-multidimensional-analysis ()
   "Test multidimensional analysis function."
