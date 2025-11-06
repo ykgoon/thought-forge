@@ -103,6 +103,60 @@
           )
       (date-to-time timestamp-string))))
 
+(defun thought-forge-find-entry-start ()
+  "Find the start position of an entry after timestamp - at the next non-blank line."
+  (save-excursion
+    ;; Current position is at the end of a timestamp match
+    ;; Move to beginning of next line
+    (forward-line 1)
+    ;; Skip blank lines until we find a non-blank line or reach end of buffer
+    (while (and (< (point) (point-max))
+                (looking-at "^[[:space:]]*$"))
+      (forward-line 1))
+    (point)))
+
+(defun thought-forge-find-entry-end ()
+  "Find the end position of an entry - before next timestamp or next org-heading."
+  (save-excursion
+    (let* ((start-pos (thought-forge-find-entry-start))
+           ;; Find next timestamp or heading
+           (next-timestamp-pos (save-excursion
+                                 (goto-char start-pos)
+                                 (when (re-search-forward org-ts-regexp-both nil t)
+                                   (match-beginning 0))))
+           (next-heading-pos (save-excursion
+                               (goto-char start-pos)
+                               (when (re-search-forward org-outline-regexp nil t)
+                                 (match-beginning 0))))
+           (boundary-pos (point-max)))
+
+      ;; Determine which boundary comes first - next timestamp or next heading
+      (when next-timestamp-pos
+        (setq boundary-pos (min boundary-pos next-timestamp-pos)))
+      (when next-heading-pos
+        (setq boundary-pos (min boundary-pos next-heading-pos)))
+
+      ;; Start from the entry start position
+      (goto-char start-pos)
+
+      ;; Find the last content line before the boundary
+      (when (< (point) boundary-pos)
+        ;; Search forward to just before the boundary
+        (goto-char (min (1- boundary-pos) (point-max)))
+        ;; Go to end of current line (which is the line before the boundary)
+        (end-of-line)
+
+        ;; Now go back to skip any blank lines
+        (while (and (> (point) start-pos)
+                    (save-excursion
+                      (forward-line 0)  ; go to beginning of line
+                      (looking-at "^[[:space:]]*$"))) ; if line is blank
+          (forward-line -1)
+          (end-of-line)))
+
+      (point))))
+
+
 (defun thought-forge-get-org-files ()
   "Get list of current org-mode files from org-mode settings."
   ;; For now, we'll use a simple approach to get org files
@@ -139,18 +193,19 @@
         (while (re-search-forward org-ts-regexp-both nil t)
           (let* ((timestamp (thought-forge-parse-org-timestamp
                              (match-string-no-properties 0)))
-                 (entry-start (save-excursion
-                                (goto-char (match-beginning 0))
-                                (line-beginning-position)))
-                 (entry-end (save-excursion
-                              (goto-char (match-end 0))
-                              (line-end-position)))
+                 (entry-start (thought-forge-find-entry-start))
+                 (entry-end (thought-forge-find-entry-end))
                  (entry-content (buffer-substring-no-properties
-                                 (max (point-min) (- entry-start 100))
-                                 (min (point-max) (+ entry-end 100)))))
+                                 (max (point-min) entry-start)
+                                 (min (point-max) entry-end))))
+
+            (message "DEBUG: timestamp = %s" timestamp)
+            (message "DEBUG: entry-start = %d" entry-start)
+            (message "DEBUG: entry-end = %d" entry-end)
+            (message "DEBUG: entry-content = %s" entry-content)
 
             ;; Check if timestamp is within our date range
-            (when (and (time-less-p start-date timestamp)
+            (when (and (not (time-less-p timestamp start-date))
                        (time-less-p timestamp (time-add end-date 86400))) ; Add one day to include end date
               (let ((entry (thought-forge-make-org-entry
                             :id (format "entry-%d" entry-counter)

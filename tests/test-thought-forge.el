@@ -59,7 +59,7 @@
     (cl-letf (((symbol-function 'thought-forge-get-org-files) mock-get-org-files))
       (let ((entries (thought-forge-collect-entries start-date end-date)))
         (should (listp entries))
-        (should (= (length entries) 3))  ; We expect exactly 3 entries
+        (should (= (length entries) 4))  ; We expect exactly 4 entries
 
         ;; Extract content from entries
         (let* ((contents (mapcar #'thought-forge-org-entry-content entries))
@@ -67,15 +67,18 @@
                                           (s-trim (s-collapse-whitespace content)))
                                         contents)))
 
-          ;; Verify that all three expected content strings are present
+          ;; Verify that all expected content strings are present (after whitespace collapse)
           (should (cl-some (lambda (content)
-                             (string-match-p "Etiam laoreet quam sed arcu." content))
+                             (string-match-p "Etiam laoreet quam sed arcu\\. Nullam tristique diam non turpis\\." content))
                            content-strings))
           (should (cl-some (lambda (content)
-                             (string-match-p "suscipit ligula.  Donec posuere augue in quam." content))
+                             (string-match-p "suscipit ligula\\. Donec posuere augue in quam\\." content))
                            content-strings))
           (should (cl-some (lambda (content)
-                             (string-match-p "dignissim in, mollis nec, sagittis eu, wisi." content))
+                             (string-match-p "Proin neque massa, cursus ut, gravida ut," content))
+                           content-strings))
+          (should (cl-some (lambda (content)
+                             (string-match-p "dignissim in, mollis nec, sagittis eu, wisi\\." content))
                            content-strings)))))))
 
 (ert-deftest test-thought-forge-multidimensional-analysis ()
@@ -94,6 +97,53 @@
   "Test average scores calculation."
   (let ((scores (list :cliche 50 :conceptual 60 :structural 70 :historical 80 :synthesis 90)))
     (should (= (thought-forge-average-scores scores) 70.0))))
+
+(ert-deftest test-thought-forge-find-entry-start ()
+  "Test finding entry start position after timestamp."
+  (let ((test-file (expand-file-name "tests/org/test1.org" default-directory)))
+    (with-temp-buffer
+      (insert-file-contents test-file)
+      (goto-char (point-min))
+
+      ;; Search for the specific timestamp <2025-10-26 Sun>
+      (should (re-search-forward "<2025-10-26 Sun>" nil t))
+
+      ;; Call the function to find entry start
+      (let ((start-pos (thought-forge-find-entry-start)))
+        ;; The expected position is at line 9, which should be the line with "Etiam vel tortor sodales tellus ultricies commodo."
+        ;; Calculate the expected position by going to line 9
+        (goto-char (point-min))
+        (forward-line 8)  ; Line 9 is 8 lines after point-min (0-indexed)
+        (let ((expected-pos (line-beginning-position)))
+          (should (= start-pos expected-pos)))
+
+        ;; Also verify that the content at this position is what we expect
+        (goto-char start-pos)
+        (should (looking-at "Etiam vel tortor sodales tellus ultricies commodo."))))))
+
+(ert-deftest test-thought-forge-find-entry-end ()
+  "Test finding entry end position after timestamp <2025-10-26 Sun>."
+  (let ((test-file (expand-file-name "tests/org/test1.org" default-directory)))
+    (with-temp-buffer
+      (insert-file-contents test-file)
+      (goto-char (point-min))
+
+      ;; Search for the specific timestamp <2025-10-26 Sun>
+      (should (re-search-forward "<2025-10-26 Sun>" nil t))
+
+      ;; The function should return the end position of the content line (line 9)
+      (let ((end-pos (thought-forge-find-entry-end)))
+        ;; The content line is "Etiam vel tortor sodales tellus ultricies commodo." on line 9
+        ;; The end of this line is the expected position
+        (goto-char (point-min))
+        (forward-line 8)  ; Go to line 9 (0-indexed: 8)
+        (let ((expected-end-pos (line-end-position)))  ; End position of line 9
+          (should (= end-pos expected-end-pos)))
+
+        ;; Also verify that we're at the end of the right line by moving back to the beginning of the line
+        (goto-char end-pos)
+        (beginning-of-line)
+        (should (looking-at "Etiam vel tortor sodales tellus ultricies commodo\\."))))))
 
 (provide 'test-thought-forge)
 
