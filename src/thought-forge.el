@@ -487,20 +487,27 @@ If you cannot find good precedents, confirm the score is appropriate."
 (defun thought-forge-toggle-entry-selection (button)
   "Toggle selection status for the entry associated with BUTTON."
   (let* ((entry (button-get button 'entry))
-         (current-label (button-label button)))
-    (if (string= current-label "UNSELECTED")
-        (progn
-          (button-put button 'entry-selected t)
-          (setf (thought-forge-org-entry-is-selected entry) t)
-          (button-put button 'face '(:box (:line-width 2 :color "gray")
-                                          :background "green" :foreground "white"))
-          (set-text-button-label button "SELECTED"))
-      (progn
-        (button-put button 'entry-selected nil)
-        (setf (thought-forge-org-entry-is-selected entry) nil)
-        (button-put button 'face '(:box (:line-width 2 :color "gray")
-                                        :background "red" :foreground "white"))
-        (set-text-button-label button "UNSELECTED")))))
+         (current-label (button-label button))
+         (button-start (button-start button))
+         (button-end (button-end button))
+         (button-action (button-get button 'action))
+         (button-entry (button-get button 'entry))
+         (new-label (if (string= current-label "UNSELECTED") "SELECTED" "UNSELECTED"))
+         (new-face (if (string= current-label "UNSELECTED")
+                      '(:background "green" :foreground "white")
+                    '(:background "red" :foreground "white")))
+         (new-selected-state (if (string= current-label "UNSELECTED") t nil)))
+    ;; Update the entry state
+    (setf (thought-forge-org-entry-is-selected entry) new-selected-state)
+    ;; Replace the button with a new one having the updated state and label
+    (save-excursion
+      (goto-char button-start)
+      (delete-region button-start button-end)
+      (insert-text-button new-label
+                          'action button-action
+                          'entry button-entry
+                          'entry-selected new-selected-state
+                          'face new-face))))
 
 ;; Define a major mode for the selection buffer
 (define-derived-mode thought-forge-selection-mode special-mode "Thought-Forge-Selection"
