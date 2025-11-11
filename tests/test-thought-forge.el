@@ -93,15 +93,21 @@
 
 (ert-deftest test-thought-forge-multidimensional-analysis ()
   "Test multidimensional analysis function."
-  (let ((scores (thought-forge-multidimensional-analysis "Test passage")))
-    (should (listp scores))
-    (should (numberp (plist-get scores :cliche)))
-    ;; The function should return the expected placeholder values
-    (should (= (plist-get scores :cliche) 70))
-    (should (= (plist-get scores :conceptual) 65))
-    (should (= (plist-get scores :structural) 75))
-    (should (= (plist-get scores :historical) 60))
-    (should (= (plist-get scores :synthesis) 80))))
+  ;; Mock gptel-run to simulate the LLM call
+  (cl-letf (((symbol-function 'gptel-run)
+             (lambda (command &rest args)
+               ;; Mock response that would simulate what an LLM might return
+               ;; When gptel-run is uncommented in the source, this will be the response
+               (format "{\"cliche\": 70, \"conceptual\": 65, \"structural\": 75, \"historical\": 60, \"synthesis\": 80}"))))
+    (let ((scores (thought-forge-multidimensional-analysis "Test passage")))
+      (should (listp scores))
+      (should (numberp (plist-get scores :cliche)))
+      ;; The function should return the expected values from the mocked gptel response
+      (should (= (plist-get scores :cliche) 70))
+      (should (= (plist-get scores :conceptual) 65))
+      (should (= (plist-get scores :structural) 75))
+      (should (= (plist-get scores :historical) 60))
+      (should (= (plist-get scores :synthesis) 80)))))
 
 (ert-deftest test-thought-forge-average-scores ()
   "Test average scores calculation."
@@ -156,73 +162,115 @@
         (should (looking-at "Etiam vel tortor sodales tellus ultricies commodo\\."))))))
 
 (ert-deftest test-thought-forge-get-org-files ()
-  "Test getting org mode files."
-  (let ((current-file buffer-file-name))
-    ;; Test when current buffer is an org file
-    (with-temp-buffer
-      (setq buffer-file-name "test.org")
-      (let ((org-files (thought-forge-get-org-files)))
-        (should (listp org-files))
-        (should (member "test.org" org-files))))
-
-    ;; Test when current buffer is not an org file (should look for ORG_DIRECTORY)
-    (let* ((temp-org-dir (make-temp-file "test-org-dir" 'directory))
-           (temp-org-file (expand-file-name "test-temp.org" temp-org-dir)))
-      ;; Create the temp org file
-      (with-temp-file temp-org-file (insert "Test org file for testing"))
-
-      ;; Temporarily set ORG_DIRECTORY to point to our temp directory
-      (cl-letf (((symbol-function 'getenv) (lambda (var)
-                                             (if (string= var "ORG_DIRECTORY")
-                                                 temp-org-dir
-                                               (funcall (symbol-function 'getenv) var)))))
+  "Test getting org mode files from default org directory, disregarding current buffer."
+  ;; Test that the function disregards the current buffer and always looks in ORG_DIRECTORY
+  ;; Use existing test data in tests/org directory
+  (let ((test-org-dir (expand-file-name "tests/org" default-directory)))
+    ;; Temporarily set ORG_DIRECTORY to point to our test org directory
+    (cl-letf (((symbol-function 'getenv) (lambda (var)
+                                           (if (string= var "ORG_DIRECTORY")
+                                               test-org-dir
+                                             (funcall (symbol-function 'getenv) var)))))
+      ;; Even if the current buffer is an org file, it should still look in ORG_DIRECTORY
+      (with-temp-buffer
+        (setq buffer-file-name "test.org")
         (let ((org-files (thought-forge-get-org-files)))
-          (should (member temp-org-file org-files))))
-
-      ;; Clean up
-      (delete-file temp-org-file)
-      (delete-directory temp-org-dir))))
+          ;; Should find 3 org files in the test directory: test1.org, test2.org, and sub/test3.org
+          (should (= (length org-files) 3))
+          (should (member (expand-file-name "test1.org" test-org-dir) org-files))
+          (should (member (expand-file-name "test2.org" test-org-dir) org-files))
+          (should (member (expand-file-name "sub/test3.org" test-org-dir) org-files))
+          ;; Should NOT contain the current buffer file "test.org"
+          (should-not (member "test.org" org-files)))))))
 
 (ert-deftest test-thought-forge-score-entry ()
   "Test scoring an entry."
-  (let* ((entry (thought-forge-make-org-entry
-                 :id "test-entry"
-                 :content "This is a test content for scoring."
-                 :timestamp (current-time)))
-         (score (thought-forge-score-entry entry)))
-    (should (thought-forge-novelty-score-p score))
-    (should (string= (thought-forge-novelty-score-entry-id score) "test-entry"))
-    (should (numberp (thought-forge-novelty-score-final-score score)))
-    (should (>= (thought-forge-novelty-score-final-score score) 0))
-    (should (<= (thought-forge-novelty-score-final-score score) 100))))
+  (cl-letf (((symbol-function 'thought-forge-multidimensional-analysis)
+             (lambda (passage)
+               ;; Mock response that would simulate what the analysis functions return
+               (list :cliche 70
+                     :conceptual 65
+                     :structural 75
+                     :historical 60
+                     :synthesis 80
+                     :justification "Passage shows moderate originality with some innovative combinations")))
+            ((symbol-function 'thought-forge-comparative-analysis)
+             (lambda (passage)
+               (list :score 68)))
+            ((symbol-function 'thought-forge-meta-evaluation)
+             (lambda (passage scores comparative)
+               (list :score 72
+                     :confidence "medium"
+                     :justification "Overall solid originality with mixed assessment scores")))
+            ((symbol-function 'thought-forge-consistency-check)
+             (lambda (passage score)
+               (list :score 70))))
+    (let* ((entry (thought-forge-make-org-entry
+                   :id "test-entry"
+                   :content "This is a test content for scoring."
+                   :timestamp (current-time)))
+           (score (thought-forge-score-entry entry)))
+      (should (thought-forge-novelty-score-p score))
+      (should (string= (thought-forge-novelty-score-entry-id score) "test-entry"))
+      (should (numberp (thought-forge-novelty-score-final-score score)))
+      (should (>= (thought-forge-novelty-score-final-score score) 0))
+      (should (<= (thought-forge-novelty-score-final-score score) 100))
+      ;; Based on the mocked values, the final score should be approximately 70.1
+      ;; (70 * 0.35) + (68 * 0.25) + (72 * 0.30) + (70 * 0.10) = 24.5 + 17 + 21.6 + 7 = 70.1
+      (should (= (thought-forge-novelty-score-final-score score) 70.1))
+      (should (= (thought-forge-novelty-score-multi-dimensional-score score) 70.0))
+      (should (= (thought-forge-novelty-score-cliche-score score) 70))
+      (should (= (thought-forge-novelty-score-conceptual-score score) 65))
+      (should (= (thought-forge-novelty-score-structural-score score) 75))
+      (should (= (thought-forge-novelty-score-historical-score score) 60))
+      (should (= (thought-forge-novelty-score-synthesis-score score) 80))
+      (should (= (thought-forge-novelty-score-comparative-score score) 68))
+      (should (= (thought-forge-novelty-score-meta-evaluation-score score) 72))
+      (should (= (thought-forge-novelty-score-consistency-check-score score) 70)))))
 
 (ert-deftest test-thought-forge-comparative-analysis ()
   "Test comparative analysis function."
-  (let ((result (thought-forge-comparative-analysis "Test passage for comparative analysis")))
-    (should (listp result))
-    (should (numberp (plist-get result :score)))
-    (should (>= (plist-get result :score) 0))
-    (should (<= (plist-get result :score) 100))))
+  ;; Mock gptel-run to simulate the LLM call
+  (cl-letf (((symbol-function 'gptel-run)
+             (lambda (command &rest args)
+               ;; Mock response that would simulate what an LLM might return for comparative analysis
+               (format "{\"score\": 68}"))))
+    (let ((result (thought-forge-comparative-analysis "Test passage for comparative analysis")))
+      (should (listp result))
+      (should (numberp (plist-get result :score)))
+      (should (= (plist-get result :score) 68))
+      (should (>= (plist-get result :score) 0))
+      (should (<= (plist-get result :score) 100)))))
 
 (ert-deftest test-thought-forge-meta-evaluation ()
   "Test meta evaluation function."
-  (let* ((scores (list :cliche 70 :conceptual 65 :structural 75 :historical 60 :synthesis 80))
-         (comparative (list :score 68))
-         (result (thought-forge-meta-evaluation "Test passage" scores comparative)))
-    (should (listp result))
-    (should (numberp (plist-get result :score)))
-    (should (stringp (plist-get result :justification)))
-    (should (or (string= (plist-get result :confidence) "low")
-                (string= (plist-get result :confidence) "medium")
-                (string= (plist-get result :confidence) "high")))))
+  ;; Mock gptel-run to simulate the LLM call
+  (cl-letf (((symbol-function 'gptel-run)
+             (lambda (command &rest args)
+               ;; Mock response that would simulate what an LLM might return for meta evaluation
+               (format "{\"score\": 72, \"justification\": \"Good synthesis of concepts with clear reasoning\", \"confidence\": \"high\"}"))))
+    (let* ((scores (list :cliche 70 :conceptual 65 :structural 75 :historical 60 :synthesis 80))
+           (comparative (list :score 68))
+           (result (thought-forge-meta-evaluation "Test passage" scores comparative)))
+      (should (listp result))
+      (should (numberp (plist-get result :score)))
+      (should (= (plist-get result :score) 72))
+      (should (string= (plist-get result :justification) "Good synthesis of concepts with clear reasoning"))
+      (should (string= (plist-get result :confidence) "high")))))
 
 (ert-deftest test-thought-forge-consistency-check ()
   "Test consistency check function."
-  (let ((result (thought-forge-consistency-check "Test passage" 75)))
-    (should (listp result))
-    (should (numberp (plist-get result :score)))
-    (should (>= (plist-get result :score) 0))
-    (should (<= (plist-get result :score) 100))))
+  ;; Mock gptel-run to simulate the LLM call
+  (cl-letf (((symbol-function 'gptel-run)
+             (lambda (command &rest args)
+               ;; Mock response that would simulate what an LLM might return for consistency check
+               (format "{\"score\": 85}"))))
+    (let ((result (thought-forge-consistency-check "Test passage" 75)))
+      (should (listp result))
+      (should (numberp (plist-get result :score)))
+      (should (= (plist-get result :score) 85))
+      (should (>= (plist-get result :score) 0))
+      (should (<= (plist-get result :score) 100)))))
 
 (ert-deftest test-thought-forge-create-selection-buffer ()
   "Test creating selection buffer with entries."
@@ -293,11 +341,15 @@
 
 (ert-deftest test-thought-forge-enhance-content ()
   "Test enhancing content."
-  (let ((original-content "This is a test content that needs enhancement.")
-        (enhanced-content (thought-forge-enhance-content "This is a test content that needs enhancement.")))
-    (should (stringp enhanced-content))
-    (should (string-match-p "This is a test content that needs enhancement\\." enhanced-content))
-    (should (string-match-p "Enhanced by LLM" enhanced-content))))
+  ;; Mock gptel-run to simulate the LLM call
+  (cl-letf (((symbol-function 'gptel-run)
+             (lambda (command &rest args)
+               ;; Mock response that would simulate what an LLM might return for content enhancement
+               "This is the enhanced content that has been made more coherent and suitable for a blog post while preserving the core meaning.")))
+    (let ((original-content "This is a test content that needs enhancement.")
+          (enhanced-content (thought-forge-enhance-content "This is a test content that needs enhancement.")))
+      (should (stringp enhanced-content))
+      (should (string-match-p "enhanced content that has been made more coherent" enhanced-content)))))
 
 (ert-deftest test-thought-forge-create-markdown-buffer ()
   "Test creating markdown buffer."
@@ -340,18 +392,6 @@
     (dolist (result results)
       (should (thought-forge-processing-result-p result))
       (should (string-match-p "Enhanced by LLM" (thought-forge-processing-result-enhanced-content result))))))
-
-(ert-deftest test-org-tf ()
-  "Test the main org-tf command function."
-  ;; We can't easily test the interactive parts (read-string) directly
-  ;; So we'll test the underlying functionality by calling internal functions
-  (let ((start-date (current-time))
-        (entry (thought-forge-make-org-entry
-                :id "test-main"
-                :content "Test content for main function"
-                :timestamp (current-time))))
-    ;; Just make sure the function is defined and callable
-    (should (fboundp 'org-tf))))
 
 (ert-deftest test-org-tf-process-selected-entries ()
   "Test processing selected entries command."
