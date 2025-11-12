@@ -365,55 +365,69 @@
 
 (ert-deftest test-thought-forge-process-selected-entries ()
   "Test processing selected entries."
-  (let* ((entry1 (thought-forge-make-org-entry
-                  :id "proc-test-1"
-                  :content "First content to process"
-                  :timestamp (current-time)))
-         (entry2 (thought-forge-make-org-entry
-                  :id "proc-test-2"
-                  :content "Second content to process"
-                  :timestamp (current-time)))
-         (selected-entries (list entry1 entry2))
-         (results (thought-forge-process-selected-entries selected-entries)))
-    (should (listp results))
-    (should (= (length results) 2))
+  ;; Mock gptel-run to simulate the LLM call for content enhancement
+  (cl-letf (((symbol-function 'gptel-run)
+             (lambda (command &rest args)
+               ;; Mock response that simulates what gptel would return for content enhancement
+               ;; Extract the :prompt from the args list (args is a plist)
+               (let ((prompt (plist-get args :prompt)))
+                 (format "Enhanced by LLM: %s" prompt)))))
+    (let* ((entry1 (thought-forge-make-org-entry
+                    :id "proc-test-1"
+                    :content "First content to process"
+                    :timestamp (current-time)))
+           (entry2 (thought-forge-make-org-entry
+                    :id "proc-test-2"
+                    :content "Second content to process"
+                    :timestamp (current-time)))
+           (selected-entries (list entry1 entry2))
+           (results (thought-forge-process-selected-entries selected-entries)))
+      (should (listp results))
+      (should (= (length results) 2))
 
-    ;; Check that results contain the expected entries (note: order may be reversed due to push)
-    (let ((result-ids (mapcar #'thought-forge-processing-result-entry-id results)))
-      (should (member "proc-test-1" result-ids))
-      (should (member "proc-test-2" result-ids)))
+      ;; Check that results contain the expected entries (note: order may be reversed due to push)
+      (let ((result-ids (mapcar #'thought-forge-processing-result-entry-id results)))
+        (should (member "proc-test-1" result-ids))
+        (should (member "proc-test-2" result-ids)))
 
-    ;; Check that we have the expected content regardless of order
-    (let ((result-contents (mapcar #'thought-forge-processing-result-original-content results)))
-      (should (member "First content to process" result-contents))
-      (should (member "Second content to process" result-contents)))
+      ;; Check that we have the expected content regardless of order
+      (let ((result-contents (mapcar #'thought-forge-processing-result-original-content results)))
+        (should (member "First content to process" result-contents))
+        (should (member "Second content to process" result-contents)))
 
-    ;; Check that both results have enhanced content
-    (dolist (result results)
-      (should (thought-forge-processing-result-p result))
-      (should (string-match-p "Enhanced by LLM" (thought-forge-processing-result-enhanced-content result))))))
+      ;; Check that both results have enhanced content
+      (dolist (result results)
+        (should (thought-forge-processing-result-p result))
+        (should (string-match-p "Enhanced by LLM" (thought-forge-processing-result-enhanced-content result)))))))
 
 (ert-deftest test-org-tf-process-selected-entries ()
   "Test processing selected entries command."
-  ;; We'll test the function by simulating the selected entries
-  (with-temp-buffer
-    (let ((inhibit-read-only t))
-      ;; Create a mock selection buffer
-      (insert "Mock selection buffer for testing\n")
-      (goto-char (point-min)))
-    (should (fboundp 'org-tf-process-selected-entries))
+  ;; Mock gptel-run to simulate the LLM call for content enhancement
+  (cl-letf (((symbol-function 'gptel-run)
+             (lambda (command &rest args)
+               ;; Mock response that simulates what gptel would return for content enhancement
+               ;; Extract the :prompt from the args list (args is a plist)
+               (let ((prompt (plist-get args :prompt)))
+                 (format "Enhanced by LLM: %s" prompt)))))
+    ;; We'll test the function by simulating the selected entries
+    (with-temp-buffer
+      (let ((inhibit-read-only t))
+        ;; Create a mock selection buffer
+        (insert "Mock selection buffer for testing\n")
+        (goto-char (point-min)))
+      (should (fboundp 'org-tf-process-selected-entries))
 
-    ;; Test the underlying functionality
-    (let* ((entry (thought-forge-make-org-entry
-                   :id "sample-1"
-                   :content "This is a sample org-mode entry that needs enhancement."
-                   :timestamp (current-time)))
-           (results (thought-forge-process-selected-entries (list entry))))
-      (should (= (length results) 1))
-      (let ((result (car results)))
-        (should (thought-forge-processing-result-p result))
-        (should (string= (thought-forge-processing-result-entry-id result) "sample-1"))
-        (should (string-match-p "Enhanced by LLM" (thought-forge-processing-result-enhanced-content result)))))))
+      ;; Test the underlying functionality
+      (let* ((entry (thought-forge-make-org-entry
+                     :id "sample-1"
+                     :content "This is a sample org-mode entry that needs enhancement."
+                     :timestamp (current-time)))
+             (results (thought-forge-process-selected-entries (list entry))))
+        (should (= (length results) 1))
+        (let ((result (car results)))
+          (should (thought-forge-processing-result-p result))
+          (should (string= (thought-forge-processing-result-entry-id result) "sample-1"))
+          (should (string-match-p "Enhanced by LLM" (thought-forge-processing-result-enhanced-content result))))))))
 
 (provide 'test-thought-forge)
 
