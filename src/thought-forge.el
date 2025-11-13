@@ -516,7 +516,14 @@ If you cannot find good precedents, confirm the score is appropriate."
 (defun thought-forge-extract-justification-from-string (str)
   "Extract justification from STR."
   (cond
-   ((string-match "justification:\\|one-line justification:\\|Brief justification:\\|justification for each score:\\(.*\\)" (downcase str))
+   ((null str) "Analysis completed by LLM")
+   ((string-match "justification for each score:\\(.*\\)" (downcase str))
+    (string-trim (match-string 1 str)))
+   ((string-match "justification:\\(.*\\)" (downcase str))
+    (string-trim (match-string 1 str)))
+   ((string-match "one-line justification:\\(.*\\)" (downcase str))
+    (string-trim (match-string 1 str)))
+   ((string-match "brief justification:\\(.*\\)" (downcase str))
     (string-trim (match-string 1 str)))
    ((string-match "\\(Passage shows.*\\|Good synthesis.*\\|Well.*\\)" str)
     (match-string 1 str))

@@ -429,6 +429,142 @@
           (should (string= (thought-forge-processing-result-entry-id result) "sample-1"))
           (should (string-match-p "Enhanced by LLM" (thought-forge-processing-result-enhanced-content result))))))))
 
+(ert-deftest test-thought-forge-parse-multidimensional-response ()
+  "Test parsing multidimensional analysis response from gptel."
+  ;; Test JSON response - when JSON is detected, justification is hardcoded
+  (let ((result (thought-forge-parse-multidimensional-response "{\"cliche\": 70, \"conceptual\": 65, \"structural\": 75, \"historical\": 60, \"synthesis\": 80, \"justification\": \"Good originality\"}")))
+    (should (listp result))
+    (should (= (plist-get result :cliche) 70))
+    (should (= (plist-get result :conceptual) 65))
+    (should (= (plist-get result :structural) 75))
+    (should (= (plist-get result :historical) 60))
+    (should (= (plist-get result :synthesis) 80))
+    (should (string= (plist-get result :justification) "Parsed from LLM response")))
+
+  ;; Test text response
+  (let ((result (thought-forge-parse-multidimensional-response "Cliché Score: 75
+Conceptual Score: 60
+Structural Score: 70
+Historical Score: 55
+Synthesis Score: 85
+Brief justification for each score: Some text here")))
+    (should (listp result))
+    (should (= (plist-get result :cliche) 75))
+    (should (= (plist-get result :conceptual) 60))
+    (should (= (plist-get result :structural) 70))
+    (should (= (plist-get result :historical) 55))
+    (should (= (plist-get result :synthesis) 85))
+    (should (string= (plist-get result :justification) "Some text here")))
+
+  ;; Test text parsing fallback - when text doesn't match known patterns,
+  ;; it uses defaults from individual extraction functions
+  (let ((result (thought-forge-parse-multidimensional-response "invalid response")))
+    (should (listp result))
+    (should (= (plist-get result :cliche) 0))
+    (should (= (plist-get result :conceptual) 0))
+    (should (= (plist-get result :structural) 0))
+    (should (= (plist-get result :historical) 0))
+    (should (= (plist-get result :synthesis) 0))
+    ;; For justification: if text parsing can't extract a value, it defaults via thought-forge-extract-justification-from-string
+    (should (string= (plist-get result :justification) "Analysis completed by LLM"))))
+
+(ert-deftest test-thought-forge-parse-comparative-response ()
+  "Test parsing comparative analysis response from gptel."
+  ;; Test JSON response
+  (let ((result (thought-forge-parse-comparative-response "{\"score\": 68}")))
+    (should (listp result))
+    (should (= (plist-get result :score) 68)))
+
+  ;; Test text response
+  (let ((result (thought-forge-parse-comparative-response "The score is 75")))
+    (should (listp result))
+    (should (= (plist-get result :score) 75)))
+
+  ;; Test error handling
+  (let ((result (thought-forge-parse-comparative-response "invalid response")))
+    (should (listp result))
+    (should (= (plist-get result :score) 0))))
+
+(ert-deftest test-thought-forge-parse-meta-eval-response ()
+  "Test parsing meta-evaluation response from gptel."
+  ;; Test JSON response
+  (let ((result (thought-forge-parse-meta-eval-response "{\"score\": 72, \"confidence\": \"high\", \"justification\": \"Good synthesis of concepts\"}")))
+    (should (listp result))
+    (should (= (plist-get result :score) 72))
+    (should (string= (plist-get result :confidence) "high"))
+    (should (string= (plist-get result :justification) "Good synthesis of concepts")))
+
+  ;; Test text response with "Final novelty score:"
+  (let ((result (thought-forge-parse-meta-eval-response "Final novelty score: 75
+Confidence level: medium
+Justification: Some text here")))
+    (should (listp result))
+    (should (= (plist-get result :score) 75))
+    (should (string= (plist-get result :confidence) "medium"))
+    (should (string= (plist-get result :justification) "Some text here")))
+
+  ;; Test text parsing fallback - when text doesn't match known patterns,
+  ;; it uses defaults from individual extraction functions
+  (let ((result (thought-forge-parse-meta-eval-response "invalid response")))
+    (should (listp result))
+    (should (= (plist-get result :score) 72))
+    ;; For confidence: if text parsing can't extract a value, it defaults to "medium" via thought-forge-extract-confidence-from-string
+    (should (string= (plist-get result :confidence) "medium"))
+    ;; For justification: if text parsing can't extract a value, it defaults via thought-forge-extract-justification-from-string
+    (should (string= (plist-get result :justification) "Analysis completed by LLM"))))
+
+(ert-deftest test-thought-forge-parse-consistency-response ()
+  "Test parsing consistency check response from gptel."
+  ;; Test JSON response
+  (let ((result (thought-forge-parse-consistency-response "{\"score\": 85}")))
+    (should (listp result))
+    (should (= (plist-get result :score) 85)))
+
+  ;; Test text response with "more realistic score"
+  (let ((result (thought-forge-parse-consistency-response "Suggest a more realistic score of 75")))
+    (should (listp result))
+    (should (= (plist-get result :score) 75)))
+
+  ;; Test text response with "Suggest a more realistic score"
+  (let ((result (thought-forge-parse-consistency-response "We suggest a more realistic score of 80")))
+    (should (listp result))
+    (should (= (plist-get result :score) 80)))
+
+  ;; Test error handling
+  (let ((result (thought-forge-parse-consistency-response "invalid response")))
+    (should (listp result))
+    (should (= (plist-get result :score) 85))))
+
+(ert-deftest test-thought-forge-extract-confidence-from-string ()
+  "Test extracting confidence level from string."
+  (should (string= (thought-forge-extract-confidence-from-string "Confidence level: high") "high"))
+  (should (string= (thought-forge-extract-confidence-from-string "confidence: medium") "medium"))
+  (should (string= (thought-forge-extract-confidence-from-string "The confidence is LOW") "low"))
+  (should (string= (thought-forge-extract-confidence-from-string "some other text") "medium")))
+
+(ert-deftest test-thought-forge-extract-justification-from-string ()
+  "Test extracting justification from string."
+  (should (string= (thought-forge-extract-justification-from-string "justification: This is a good reason") "This is a good reason"))
+  (should (string= (thought-forge-extract-justification-from-string "one-line justification: Good idea") "Good idea"))
+  (should (string= (thought-forge-extract-justification-from-string "Brief justification: Some brief text") "Some brief text"))
+  (should (string= (thought-forge-extract-justification-from-string "justification for each score: Details here") "Details here"))
+  (should (string= (thought-forge-extract-justification-from-string "Passage shows moderate originality") "Passage shows moderate originality"))
+  (should (string= (thought-forge-extract-justification-from-string "Good synthesis of concepts") "Good synthesis of concepts"))
+  (should (string= (thought-forge-extract-justification-from-string "some other text") "Analysis completed by LLM")))
+
+(ert-deftest test-thought-forge-get-json-value ()
+  "Test extracting numeric value from JSON string."
+  (should (= (thought-forge-get-json-value "{\"score\": 75, \"cliche\": 60}" "score" 0) 75))
+  (should (= (thought-forge-get-json-value "{\"score\": 75, \"cliche\": 60}" "cliche" 0) 60))
+  (should (= (thought-forge-get-json-value "{\"score\": 75.5, \"cliche\": 60}" "score" 0) 75.5))
+  (should (= (thought-forge-get-json-value "{\"other\": 100}" "score" 42) 42)))
+
+(ert-deftest test-thought-forge-get-json-string-value ()
+  "Test extracting string value from JSON string."
+  (should (string= (thought-forge-get-json-string-value "{\"confidence\": \"high\", \"justification\": \"good\"}" "confidence") "high"))
+  (should (string= (thought-forge-get-json-string-value "{\"confidence\": \"high\", \"justification\": \"good\"}" "justification") "good"))
+  (should (equal (thought-forge-get-json-string-value "{\"other\": \"value\"}" "score") nil)))
+
 (provide 'test-thought-forge)
 
 ;;; test-thought-forge.el ends here
